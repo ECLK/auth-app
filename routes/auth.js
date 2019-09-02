@@ -1,5 +1,6 @@
 var express = require('express');
 var router = express.Router();
+const axios = require('axios')
 
 // Set the configuration settings
 const credentials = {
@@ -24,7 +25,7 @@ router.get('/signin', function (req, res, next) {
   // Authorization oauth2 URI
   const authorizationUri = oauth2.authorizationCode.authorizeURL({
     redirect_uri: 'http://localhost:3000/auth/callback',
-    scope: 'openid', // also can be an array of multiple scopes, ex. ['<scope1>, '<scope2>', '...']
+    scope: 'openid nomination_edit election_template_edit call_election_edit objection_edit nomination_approval_edit election_template_approval call_election_approve_edit payment_approve_edit objection_approve_edit user_home admin_home', // also can be an array of multiple scopes, ex. ['<scope1>, '<scope2>', '...']
     state: ''
   });
 
@@ -33,31 +34,35 @@ router.get('/signin', function (req, res, next) {
   res.redirect(authorizationUri);
 });
 
-router.get('/auth/callback', function (req, res, next) {
+router.get('/auth/callback', async function (req, res, next) {
   console.log(req.query);
   // Get the access token object (the authorization code is given from the previous step).
   const tokenConfig = {
     code: req.query.code,
     redirect_uri: 'http://localhost:3000/auth/callback',
-    scope: 'openid', // also can be an array of multiple scopes, ex. ['<scope1>, '<scope2>', '...']
+    scope: 'openid nomination_edit election_template_edit call_election_edit objection_edit nomination_approval_edit election_template_approval call_election_approve_edit payment_approve_edit objection_approve_edit user_home admin_home', // also can be an array of multiple scopes, ex. ['<scope1>, '<scope2>', '...']
   };
   // THIS HAS TO BE REMOVED IN PRODUCTION
   process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
   // Save the access token
   try {
-    oauth2.authorizationCode.getToken(tokenConfig).then(function(result){
+    oauth2.authorizationCode.getToken(tokenConfig).then(async function(result){
       
       const accessToken = oauth2.accessToken.create(result);
       console.log(accessToken);
 
       console.log(`
       ##############################################################
-      ${JSON.stringify(accessToken, null,  2)}
+      ${JSON.stringify(accessToken.token.scope, null,  2)}
       ##############################################################
       `)
 
+      //call wso2 is user info end point to get the party id of the loging user
+      const party_id = await getUserInfo(accessToken['token']['access_token']);
 
       res.cookie('somekey',accessToken['token']['access_token'], { maxAge: 900000, httpOnly: false });
+      res.cookie('party_id',party_id, { maxAge: 900000, httpOnly: false });
+      res.cookie('scope',accessToken['token']['scope'], { maxAge: 900000, httpOnly: false });
       res.redirect("http://localhost:3000/election/admin/");
     }).catch(function(error){
       console.log(error);
@@ -68,5 +73,20 @@ router.get('/auth/callback', function (req, res, next) {
     res.send();
   }
 });
+
+// call wso2 is user info end point
+const getUserInfo = async (tocken) => {
+  try {
+    const instance = axios.create({
+      baseURL: 'https://localhost:8243'
+    });
+    instance.defaults.headers.common['Authorization'] = 'Bearer '+tocken
+    instance.defaults.headers.post['Content-Type'] ='application/x-www-form-urlencoded';
+    const res = await instance.get('/userinfo');
+    return res.data.party;
+  } catch (error) {
+    console.error(error)
+  }
+}
 
 module.exports = router;
