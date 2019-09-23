@@ -5,13 +5,13 @@ const axios = require('axios')
 // Set the configuration settings
 const credentials = {
   client: {
-    id: 'Bc9am2voec_NAvfJA8KmpiZ0qAca',
-    secret: 'hD3_9rDl6Khkb6uYd7vKmnc9ThYa'
+    id: 'vOGErfzrRxH5uKpWkGntO95THW8a',
+    secret: 'Kp8_yprxRYuWivXtc2XrdnxMBqIa'
   },
   auth: {
-    tokenHost: 'https://localhost:8243/',
+    tokenHost: 'https://apim.ecdev.opensource.lk:8243/',
     tokenPath: 'token',
-    authorizeHost: 'https://localhost:8243/',
+    authorizeHost: 'https://apim.ecdev.opensource.lk:8243/',
     authorizePath: 'authorize'
   }
 };
@@ -24,8 +24,8 @@ router.get('/signin', function (req, res, next) {
   console.log("Signin")
   // Authorization oauth2 URI
   const authorizationUri = oauth2.authorizationCode.authorizeURL({
-    redirect_uri: 'http://localhost:3000/auth/callback',
-    scope: 'openid nomination_edit election_template_edit call_election_edit objection_edit nomination_approval_edit election_template_approval call_election_approve_edit payment_approve_edit objection_approve_edit user_home admin_home', // also can be an array of multiple scopes, ex. ['<scope1>, '<scope2>', '...']
+    redirect_uri: 'http://tabulataion-ui-1uo6tf.pxe-dev-platformer-1552477983757-1pdna.svc/auth/callback',
+    scope: 'openid', // also can be an array of multiple scopes, ex. ['<scope1>, '<scope2>', '...']
     state: ''
   });
 
@@ -39,8 +39,8 @@ router.get('/auth/callback', async function (req, res, next) {
   // Get the access token object (the authorization code is given from the previous step).
   const tokenConfig = {
     code: req.query.code,
-    redirect_uri: 'http://localhost:3000/auth/callback',
-    scope: 'openid nomination_edit election_template_edit call_election_edit objection_edit nomination_approval_edit election_template_approval call_election_approve_edit payment_approve_edit objection_approve_edit user_home admin_home', // also can be an array of multiple scopes, ex. ['<scope1>, '<scope2>', '...']
+    redirect_uri: 'http://tabulataion-ui-1uo6tf.pxe-dev-platformer-1552477983757-1pdna.svc/auth/callback',
+    scope: 'openid', // also can be an array of multiple scopes, ex. ['<scope1>, '<scope2>', '...']
   };
   // THIS HAS TO BE REMOVED IN PRODUCTION
   process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
@@ -58,12 +58,12 @@ router.get('/auth/callback', async function (req, res, next) {
       `)
 
       //call wso2 is user info end point to get the party id of the loging user
-      const party_id = await getUserInfo(accessToken['token']['access_token']);
+      const claims = await getUserInfo(accessToken['token']['access_token']);
 
       res.cookie('somekey',accessToken['token']['access_token'], { maxAge: 900000, httpOnly: false });
-      res.cookie('party_id',party_id, { maxAge: 900000, httpOnly: false });
+      res.cookie('claims',claims, { maxAge: 900000, httpOnly: false });
       res.cookie('scope',accessToken['token']['scope'], { maxAge: 900000, httpOnly: false });
-      res.redirect("http://localhost:3000/election/admin/");
+      res.redirect("http://tabulataion-ui-1uo6tf.pxe-dev-platformer-1552477983757-1pdna.svc/");
     }).catch(function(error){
       console.log(error);
       res.send();
@@ -78,12 +78,12 @@ router.get('/auth/callback', async function (req, res, next) {
 const getUserInfo = async (tocken) => {
   try {
     const instance = axios.create({
-      baseURL: 'https://localhost:8243'
+      baseURL: 'https://apim.ecdev.opensource.lk:8243/'
     });
     instance.defaults.headers.common['Authorization'] = 'Bearer '+tocken
     instance.defaults.headers.post['Content-Type'] ='application/x-www-form-urlencoded';
     const res = await instance.get('/userinfo');
-    return res.data.party;
+    return res.data;
   } catch (error) {
     console.error(error)
   }
