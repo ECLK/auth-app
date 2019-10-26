@@ -5,8 +5,8 @@ const axios = require('axios')
 // Set the configuration settings
 const credentials = {
   client: {
-    id: 'Bc9am2voec_NAvfJA8KmpiZ0qAca',
-    secret: 'hD3_9rDl6Khkb6uYd7vKmnc9ThYa'
+    id: 'xxxxx',
+    secret: 'xxxxx'
   },
   auth: {
     tokenHost: 'https://localhost:8243/',
