@@ -25,7 +25,7 @@ router.get('/signin', function (req, res, next) {
   // Authorization oauth2 URI
   const authorizationUri = oauth2.authorizationCode.authorizeURL({
     redirect_uri: 'http://localhost:3000/auth/callback',
-    scope: 'openid nomination_edit election_template_edit call_election_edit objection_edit nomination_approval_edit election_template_approval call_election_approve_edit payment_approve_edit objection_approve_edit user_home admin_home', // also can be an array of multiple scopes, ex. ['<scope1>, '<scope2>', '...']
+    scope: 'openid nomination_edit election_template_edit call_election_edit objection_edit nomination_approval_edit election_template_approval call_election_approve_edit payment_approve_edit objection_approve_edit user_home admin_home payment_edit', // also can be an array of multiple scopes, ex. ['<scope1>, '<scope2>', '...']
     state: ''
   });
 
@@ -40,7 +40,7 @@ router.get('/auth/callback', async function (req, res, next) {
   const tokenConfig = {
     code: req.query.code,
     redirect_uri: 'http://localhost:3000/auth/callback',
-    scope: 'openid nomination_edit election_template_edit call_election_edit objection_edit nomination_approval_edit election_template_approval call_election_approve_edit payment_approve_edit objection_approve_edit user_home admin_home', // also can be an array of multiple scopes, ex. ['<scope1>, '<scope2>', '...']
+    scope: 'openid nomination_edit election_template_edit call_election_edit objection_edit nomination_approval_edit election_template_approval call_election_approve_edit payment_approve_edit objection_approve_edit user_home admin_home payment_edit', // also can be an array of multiple scopes, ex. ['<scope1>, '<scope2>', '...']
   };
   // THIS HAS TO BE REMOVED IN PRODUCTION
   process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
