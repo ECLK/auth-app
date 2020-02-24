@@ -1,6 +1,7 @@
 var express = require('express');
 var router = express.Router();
-const axios = require('axios')
+const axios = require('axios');
+const https = require('https');
 
 // Set the configuration settings
 const credentials = {
@@ -15,6 +16,8 @@ const credentials = {
     authorizePath: 'authorize'
   }
 };
+
+const logoutUrl = "https://localhost:9443/oidc/logout"
 
 // Initialize the OAuth2 Library
 const oauth2 = require('simple-oauth2').create(credentials);
@@ -34,8 +37,22 @@ router.get('/signin', function (req, res, next) {
   res.redirect(authorizationUri);
 });
 
+router.get('/signout', function (req, res, next) {
+  console.log("Logout");
+  // At request level
+  var URL = logoutUrl + "?id_token_hint=" + req.cookies.code + 
+                          "&post_logout_redirect_uri=http://localhost:3000/auth/callback" 
+                          ;
+  res.clearCookie('somekey');
+  res.redirect(URL);
+});
+
 router.get('/auth/callback', async function (req, res, next) {
   console.log(req.query);
+  //if code is not there redirect to signin
+  if(req.query.code == undefined){
+    res.redirect("/");
+  }
   // Get the access token object (the authorization code is given from the previous step).
   const tokenConfig = {
     code: req.query.code,
@@ -61,6 +78,7 @@ router.get('/auth/callback', async function (req, res, next) {
       const party_id = await getUserInfo(accessToken['token']['access_token']);
 
       res.cookie('somekey',accessToken['token']['access_token'], { maxAge: 900000, httpOnly: false });
+      res.cookie('code', accessToken['token']['id_token']);
       res.cookie('party_id',party_id, { maxAge: 900000, httpOnly: false });
       res.cookie('scope',accessToken['token']['scope'], { maxAge: 900000, httpOnly: false });
       res.redirect("http://localhost:3000/election/admin/");
