@@ -237,11 +237,13 @@ router.get('/tabulation/signout',async function (req, res, next) {
 
   await revokeTabulationToken(req.cookies['tabulation_access_token']);
 
+  var URL = logoutUrl + "?id_token_hint=" + req.cookies['tabulation_id_token'] +  "&post_logout_redirect_uri=" + tabulationConfig.clientRedirectUri;
+
   res.clearCookie('tabulation_access_token');
   res.clearCookie('tabulation_id_token');
   res.clearCookie('userinfo');
 
-  res.redirect(getTabulationAuthorizationUrl());
+  res.redirect(URL);
 });
 
 module.exports = router;
