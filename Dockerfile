@@ -5,5 +5,5 @@ WORKDIR /app
 COPY package.json /app/package.json
 COPY . /app
 RUN npm install --silent
-EXPOSE 3000
+EXPOSE 3001
 CMD ["npm", "start"]

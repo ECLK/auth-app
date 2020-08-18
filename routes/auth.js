@@ -1,6 +1,7 @@
 var express = require('express');
 var router = express.Router();
-const axios = require('axios')
+const axios = require('axios');
+const https = require('https'); 
 
 // Set the configuration settings
 const credentials = {
@@ -16,8 +17,20 @@ const credentials = {
   }
 };
 
+const logoutUrl = "https://localhost:9443/oidc/logout"
+
 // Initialize the OAuth2 Library
 const oauth2 = require('simple-oauth2').create(credentials);
+
+router.get('/signout', function (req, res, next) {
+  console.log("Logout");
+  // At request level
+  var URL = logoutUrl + "?id_token_hint=" + req.cookies.code + 
+                          "&post_logout_redirect_uri=http://localhost:3000/auth/callback" 
+                          ;
+  res.clearCookie('somekey');
+  res.redirect(URL);
+});
 
 /* GET users listing. */
 router.get('/signin', function (req, res, next) {
@@ -25,7 +38,7 @@ router.get('/signin', function (req, res, next) {
   // Authorization oauth2 URI
   const authorizationUri = oauth2.authorizationCode.authorizeURL({
     redirect_uri: 'http://localhost:3000/auth/callback',
-    scope: 'openid nomination_edit election_template_edit call_election_edit objection_edit nomination_approval_edit election_template_approval call_election_approve_edit payment_approve_edit objection_approve_edit user_home admin_home payment_edit', // also can be an array of multiple scopes, ex. ['<scope1>, '<scope2>', '...']
+    scope: 'openid nomination_edit election_template_edit call_election_edit objection_edit nomination_approval_edit election_template_approval call_election_approve_edit payment_approve_edit objection_approve_edit user_home admin_home payment_edit party_edit', // also can be an array of multiple scopes, ex. ['<scope1>, '<scope2>', '...']
     state: ''
   });
 
@@ -36,11 +49,15 @@ router.get('/signin', function (req, res, next) {
 
 router.get('/auth/callback', async function (req, res, next) {
   console.log(req.query);
+  //if code is not there redirect to signin
+  if(req.query.code == undefined){
+    res.redirect("/");
+  }
   // Get the access token object (the authorization code is given from the previous step).
   const tokenConfig = {
     code: req.query.code,
     redirect_uri: 'http://localhost:3000/auth/callback',
-    scope: 'openid nomination_edit election_template_edit call_election_edit objection_edit nomination_approval_edit election_template_approval call_election_approve_edit payment_approve_edit objection_approve_edit user_home admin_home payment_edit', // also can be an array of multiple scopes, ex. ['<scope1>, '<scope2>', '...']
+    scope: 'openid nomination_edit election_template_edit call_election_edit objection_edit nomination_approval_edit election_template_approval call_election_approve_edit payment_approve_edit objection_approve_edit user_home admin_home payment_edit party_edit', // also can be an array of multiple scopes, ex. ['<scope1>, '<scope2>', '...']
   };
   // THIS HAS TO BE REMOVED IN PRODUCTION
   process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
@@ -58,10 +75,14 @@ router.get('/auth/callback', async function (req, res, next) {
       `)
 
       //call wso2 is user info end point to get the party id of the loging user
-      const party_id = await getUserInfo(accessToken['token']['access_token']);
+      const data = await getUserInfo(accessToken['token']['access_token']);
 
-      res.cookie('somekey',accessToken['token']['access_token'], { maxAge: 3600000, httpOnly: false });
-      res.cookie('party_id',party_id, { maxAge: 3600000, httpOnly: false });
+
+      res.cookie('somekey',accessToken['token']['access_token'], { maxAge: 3600000, httpOnly: false,sameSite: 'strict' });
+      res.cookie('code', accessToken['token']['id_token']);
+      res.cookie('party_id',data.party, { maxAge: 3600000, httpOnly: false });
+      res.cookie('division_id',data.division, { maxAge: 3600000, httpOnly: false });
+      res.cookie('user',data.user, { maxAge: 3600000, httpOnly: false });
       res.cookie('scope',accessToken['token']['scope'], { maxAge: 3600000, httpOnly: false });
       res.redirect("http://localhost:3000/election/admin/");
     }).catch(function(error){
@@ -83,7 +104,13 @@ const getUserInfo = async (tocken) => {
     instance.defaults.headers.common['Authorization'] = 'Bearer '+tocken
     instance.defaults.headers.post['Content-Type'] ='application/x-www-form-urlencoded';
     const res = await instance.get('/userinfo');
-    return res.data.party;
+    console.log("res.datares.datares.data",res.data);
+    var data = {
+      party : res.data.party,
+      division : res.data.division,
+      user : res.data.sub
+    }
+    return data;
   } catch (error) {
     console.error(error)
   }
