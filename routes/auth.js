@@ -117,7 +117,7 @@ const getUserInfo = async (tocken) => {
 
 const tabulationConfig = {
   serverRedirectUri: 'http://localhost:3001/tabulation/auth/callback',
-  clientRedirectUri: 'http://localhost:3000/auth',
+  clientRedirectUri: 'http://localhost:3000',
   isBaseUrl: 'https://apim-gateway.ecdev.opensource.lk/',
 }
 
@@ -132,9 +132,7 @@ const tabulationCredentials = {
 // Initialize the OAuth2 Library
 const tabulationOauth2 = require('simple-oauth2').create(tabulationCredentials);
 
-
-/* GET users listing. */
-router.get('/tabulation/signin', function (req, res, next) {
+function getTabulationAuthorizationUrl() {
   const authorizationUri = tabulationOauth2.authorizationCode.authorizeURL({
     redirect_uri: tabulationConfig.serverRedirectUri, //process.env.host +
     scope: 'openid' +
@@ -150,7 +148,39 @@ router.get('/tabulation/signin', function (req, res, next) {
     state: ''
   });
 
-  res.redirect(authorizationUri);
+  return authorizationUri;
+};
+
+async function getTabulationUserInfo(tocken) {
+  try {
+    const instance = axios.create({
+      baseURL: tabulationConfig.isBaseUrl
+    });
+    instance.defaults.headers.common['Authorization'] = 'Bearer '+tocken
+    const res = await instance.get('/userinfo?schema=openid');
+    return res.data;
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+async function revokeTabulationToken(tocken) {
+  try {
+    const instance = axios.create({
+      baseURL: tabulationConfig.isBaseUrl
+    });
+    instance.defaults.headers.common['Authorization'] = 'Basic '+tabulationCredentials.client.id + ':' + tabulationCredentials.client.secret;
+    instance.defaults.headers.post['token'] =tocken;
+    instance.defaults.headers.post['Content-Type'] ='application/x-www-form-urlencoded';
+    const res = await instance.post('oauth2/revoke');
+    return res.data;
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+router.get('/tabulation/signin', function (req, res, next) {
+  res.redirect(getTabulationAuthorizationUrl());
 });
 
 router.get('/tabulation/auth/callback', async function (req, res, next) {
@@ -191,7 +221,7 @@ router.get('/tabulation/auth/callback', async function (req, res, next) {
       res.cookie('tabulation_access_token',accessToken['token']['access_token'], { maxAge: 900000, httpOnly: false });
       res.cookie('tabulation_id_token',accessToken['token']['id_token'], { maxAge: 900000, httpOnly: false });
       res.cookie('userinfo',JSON.stringify(userInfo), { maxAge: 900000, httpOnly: false });
-      res.redirect( tabulationConfig.clientRedirectUri);
+      res.redirect(tabulationConfig.clientRedirectUri);
     }).catch(function(error){
       console.log(error);
       res.send();
@@ -202,18 +232,18 @@ router.get('/tabulation/auth/callback', async function (req, res, next) {
   }
 });
 
-const getTabulationUserInfo = async (tocken) => {
-  try {
-    const instance = axios.create({
-      baseURL: tabulationConfig.isBaseUrl
-    });
-    instance.defaults.headers.common['Authorization'] = 'Bearer '+tocken
-    const res = await instance.get('/userinfo?schema=openid');
-    return res.data;
-  } catch (error) {
-    console.error(error)
-  }
-}
+router.get('/tabulation/signout',async function (req, res, next) {
+  console.log("Logout");
 
+  await revokeTabulationToken(req.cookies['tabulation_access_token']);
+
+  var URL = logoutUrl + "?id_token_hint=" + req.cookies['tabulation_id_token'] +  "&post_logout_redirect_uri=" + tabulationConfig.clientRedirectUri;
+
+  res.clearCookie('tabulation_access_token');
+  res.clearCookie('tabulation_id_token');
+  res.clearCookie('userinfo');
+
+  res.redirect(URL);
+});
 
 module.exports = router;
